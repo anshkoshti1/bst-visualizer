@@ -1,64 +1,87 @@
-import React, { useState, useEffect } from "react";
-import { gsap } from "gsap";
+import React, { useEffect, useState } from "react";
+import * as d3 from "d3";
 import axios from "axios";
 
-const App = () => {
-    const [tree, setTree] = useState(null);
-    const [value, setValue] = useState("");
+const BSTVisualizer = () => {
+  const [treeData, setTreeData] = useState(null);
 
-    const fetchTree = async () => {
-        const { data } = await axios.get("http://localhost:5000/tree");
-        setTree(data);
-    };
+  useEffect(() => {
+    fetchTree();
+  }, []);
 
-    useEffect(() => {
-        fetchTree();
-    }, []);
+  const fetchTree = async () => {
+    try {
+      const response = await axios.get("http://localhost:5000/tree");
+      setTreeData(response.data.tree);
+    } catch (error) {
+      console.error("Error fetching tree:", error);
+    }
+  };
 
-    const insertNode = async () => {
-        await axios.post("http://localhost:5000/insert", { value: parseInt(value) });
-        fetchTree();
-        setValue("");
-        animateInsertion();
-    };
+  const insertNode = async () => {
+    const value = prompt("Enter a value to insert:");
+    if (!value) return;
+    try {
+      await axios.post("http://localhost:5000/insert", { value: Number(value) });
+      fetchTree();
+    } catch (error) {
+      console.error("Error inserting node:", error);
+    }
+  };
 
-    const deleteNode = async () => {
-        await axios.delete(`http://localhost:5000/delete/${value}`);
-        fetchTree();
-        setValue("");
-    };
+  useEffect(() => {
+    if (treeData) {
+      renderTree(treeData);
+    }
+  }, [treeData]);
 
-    const animateInsertion = () => {
-        gsap.fromTo(".node", { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5 });
-    };
+  const renderTree = (data) => {
+    d3.select("#tree-container").selectAll("*").remove();
+    const width = 600, height = 400;
+    const svg = d3
+      .select("#tree-container")
+      .append("svg")
+      .attr("width", width)
+      .attr("height", height);
+    
+    const root = d3.hierarchy(data);
+    const treeLayout = d3.tree().size([width - 100, height - 100]);
+    treeLayout(root);
+    
+    const linkGenerator = d3.linkVertical().x(d => d.x).y(d => d.y);
+    svg.selectAll("path")
+      .data(root.links())
+      .enter()
+      .append("path")
+      .attr("d", linkGenerator)
+      .attr("fill", "none")
+      .attr("stroke", "black");
+    
+    svg.selectAll("circle")
+      .data(root.descendants())
+      .enter()
+      .append("circle")
+      .attr("cx", d => d.x)
+      .attr("cy", d => d.y)
+      .attr("r", 15)
+      .attr("fill", "steelblue");
+    
+    svg.selectAll("text")
+      .data(root.descendants())
+      .enter()
+      .append("text")
+      .attr("x", d => d.x)
+      .attr("y", d => d.y - 20)
+      .attr("text-anchor", "middle")
+      .text(d => d.data.name);
+  };
 
-    const renderTree = (node) => {
-      if (!node) return null;
-      
-      return (
-          <div className="tree-node">
-              <div className="node">{node.value}</div>
-              <div className="branches">
-                  {node.left && <div className="line left-line"></div>}
-                  {node.right && <div className="line right-line"></div>}
-              </div>
-              <div className="children">
-                  {node.left && renderTree(node.left)}
-                  {node.right && renderTree(node.right)}
-              </div>
-          </div>
-      );
-    };  
-
-    return (
-        <div className="container">
-            <h1>Binary Search Tree Visualizer</h1>
-            <input type="number" value={value} onChange={(e) => setValue(e.target.value)} />
-            <button onClick={insertNode}>Insert</button>
-            <button onClick={deleteNode}>Delete</button>
-            <div className="tree">{renderTree(tree)}</div>
-        </div>
-    );
+  return (
+    <div>
+      <button onClick={insertNode}>Insert Node</button>
+      <div id="tree-container" style={{ marginTop: "20px" }}></div>
+    </div>
+  );
 };
 
-export default App;
+export default BSTVisualizer;
