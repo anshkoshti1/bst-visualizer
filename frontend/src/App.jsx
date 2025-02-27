@@ -38,17 +38,21 @@ const BSTVisualizer = () => {
   const renderTree = (data) => {
     d3.select("#tree-container").selectAll("*").remove();
     const width = 600, height = 400;
+
     const svg = d3
       .select("#tree-container")
       .append("svg")
-      .attr("width", width)
-      .attr("height", height);
-    
+      .attr("width", width + 100)
+      .attr("height", height + 100)
+      .append("g")
+      .attr("transform", "translate(50,50)");
+
     const root = d3.hierarchy(data);
-    const treeLayout = d3.tree().size([width - 100, height - 100]);
+    const treeLayout = d3.tree().size([height, width - 100]);
     treeLayout(root);
+
+    const linkGenerator = d3.linkHorizontal().x(d => d.y).y(d => d.x);
     
-    const linkGenerator = d3.linkVertical().x(d => d.x).y(d => d.y);
     svg.selectAll("path")
       .data(root.links())
       .enter()
@@ -61,8 +65,8 @@ const BSTVisualizer = () => {
       .data(root.descendants())
       .enter()
       .append("circle")
-      .attr("cx", d => d.x)
-      .attr("cy", d => d.y)
+      .attr("cx", d => d.y)
+      .attr("cy", d => d.x)
       .attr("r", 15)
       .attr("fill", "steelblue");
     
@@ -70,8 +74,8 @@ const BSTVisualizer = () => {
       .data(root.descendants())
       .enter()
       .append("text")
-      .attr("x", d => d.x)
-      .attr("y", d => d.y - 20)
+      .attr("x", d => d.y)
+      .attr("y", d => d.x - 20)
       .attr("text-anchor", "middle")
       .text(d => d.data.name);
   };
